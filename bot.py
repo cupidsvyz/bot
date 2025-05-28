@@ -7,6 +7,7 @@ import telebot
 from groq import Groq
 from collections import deque
 from datetime import datetime, date
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -21,125 +22,59 @@ current_key_index = 0
 groq_client = Groq(api_key=GROQ_API_KEYS[current_key_index])
 
 # Sets and dictionaries for tracking
-deadmeat_users = set()  # Users marked as deadmeat
-user_warnings = {}  # {user_id: warning_count}
-user_tribute_refusals = {}  # {user_id: refusal_count}
-chat_history = {}  # {user_id: deque([{"role": "user"|"bot", "content": message}, ...])}
-tribute_requests = {}  # {user_id: {"date": date, "count": int}}
+deadmeat_users = set()
+user_warnings = {}
+user_tribute_refusals = {}
+chat_history = {}
+tribute_requests = {}
 
-# List of sadistic Findom tasks
+# Updated list of sadistic, seductive, and physically dominating tasks
 tasks = [
-    "Beg for my attention on your knees, you worthless slug, and maybe I’ll notice you.",
-    "Write 'Princess Spizy owns me' 50 times, you pathetic worm, and send proof.",
-    "Tweet you’re my loyal paypig and tag me, you spineless fool. Send the link.",
-    "Clean your filthy room, you disgusting pig, and show me before-and-after photos.",
-    "Grovel in a 100-word message about my superiority, you sniveling drone.",
-    "Kneel for 10 minutes, record it, and send the video, you vile insect.",
-    "Write my name 100 times in blood-red ink, you useless dog.",
-    "Post a public apology for being worthless on X, tag me, you scum.",
-    "Hold ice cubes until they melt, you weakling, and send proof.",
-    "Buy me a coffee on Throne or I’ll spit on your existence.",
-    "Run in place for 20 minutes, film it, you sweaty pig.",
-    "Eat a spoonful of hot sauce, record your misery, you fool.",
-    "Write a poem praising me, 200 words, you brainless mule.",
-    "Shave a stripe in your hair, send a pic, you clown.",
-    "Wear socks for 3 days, send a photo, you filthy rat.",
-    "Do 100 push-ups, film it, you pathetic weakling.",
-    "Lick the floor, record it, you disgusting dog 😈.",
-    "Send a 50-word essay on why I’m perfect, you drone.",
-    "Stand in a corner for 15 minutes, send proof, you loser.",
-    "Gift me something on Throne or vanish, you trash.",
+    "Kneel and kiss the ground I walk on, you pathetic worm, and send me proof.",
+    "Massage my feet for an hour in your mind, describe every second, you slave.",
+    "Write 'Princess Spizy owns my soul' 100 times, film it, you worthless dog.",
+    "Crawl across your floor like my carpet, record it, you filthy rug.",
+    "Beg to be my human ashtray, 200 words, you disgusting pig.",
+    "Lick my boots clean in your dreams, describe it, you sniveling drone.",
+    "Carry my bags in your imagination all day, send a 150-word report, mule.",
+    "Tweet you’re my devoted footstool, tag me, you spineless fool.",
+    "Hold a heavy book for me for 15 minutes, film it, you weakling.",
+    "Buy me a latte on Throne or I’ll crush your ego, you trash.",
+    "Worship my heels by writing a 250-word poem, you groveling rat.",
+    "Act as my chauffeur in a 100-word fantasy, you lowly driver.",
+    "Wear a collar labeled 'Spizy’s Pet,' send a pic, you obedient dog.",
+    "Kneel under my table as my footrest, describe it, you furniture slave.",
+    "Gift me on Throne or I’ll spit on your existence, you scum 😈.",
+    "Write 'I’m Spizy’s toy' 75 times, send proof, you pathetic plaything.",
+    "Endure a cold shower for me, film it, you shivering fool.",
+    "Serve as my pain slut, describe taking 10 spanks, you weakling.",
     "Sing my praises in a voice message, you toneless pig.",
-    "Write 'I’m nothing' 75 times, send it, you speck.",
-    "Skip a meal to worship me, tell me, you worm.",
-    "Wear a paper crown labeled 'Spizy’s Slave,' send a pic.",
-    "Hold your breath for 30 seconds, record it, you fool.",
-    "Buy me a gift card or I’ll forget you exist.",
-    "Do 50 squats, film it, you flabby dog.",
-    "Write my name in the dirt outside, send proof, you ant.",
-    "Confess your worst secret to me, you pathetic rat.",
-    "Wear mismatched shoes all day, send pics, you idiot.",
-    "Send a 100-word letter begging for mercy, you maggot.",
-    "Eat plain rice, record it, you boring pig.",
-    "Draw my name in the air 100 times, film it, drone.",
-    "Gift me on Throne or you’re dead to me, trash 😈.",
-    "Hold a plank for 2 minutes, send proof, you weakling.",
-    "Write 'Spizy is God' 60 times, send it, worm.",
-    "Wear a sign saying 'I serve Spizy,' send a pic.",
-    "Do 25 burpees, film it, you clumsy dog.",
-    "Send a video bowing to me 10 times, you slave.",
-    "Write a 150-word story of my glory, you speck.",
-    "Stand on one leg for 5 minutes, record it, fool.",
-    "Buy me something pretty or crawl away, you filth.",
-    "Eat a raw onion, film your tears, you weak pig.",
-    "Write 'I’m a loser' 80 times, send proof, drone.",
-    "Wear clothes inside out, send pics, you moron.",
-    "Do 100 jumping jacks, film it, you sweaty rat.",
-    "Send a 200-word essay on my perfection, you worm.",
-    "Hold a book above your head for 10 minutes, record it, send proof.",
-    "Gift me on Throne or I’ll erase you, scum 💸.",
-    "Write my name on your hand, send a pic, you dog.",
-    "Do 30 sit-ups, film it, send it, you flabby slave.",
-    "Sing 'Happy Birthday' to me, record it, you fool.",
-    "Wear a ridiculous hat, send proof, you clown.",
-    "Write 'Spizy rules' 90 times, send it, maggot.",
-    "Run around your house 5 times, film it, pig.",
-    "Send a video crawling to me, you pathetic insect.",
-    "Buy me a gift or you’re nothing, you trash.",
-    "Eat a lemon, record your face, you weakling.",
-    "Write a 100-word apology for existing, you drone.",
-    "Wear one sock all day, send pics, you idiot.",
-    "Do 15 pull-ups, film it, you frail dog.",
-    "Send a 50-word prayer to me, you speck.",
-    "Stand in rain for 5 minutes, record it, you worm.",
-    "Gift me on Throne or I’ll laugh at you, filth 😈.",
-    "Write 'I obey Spizy' 70 times, send proof.",
-    "Do 40 lunges, film it, you clumsy pig.",
-    "Wear a scarf in public, send pics, you fool.",
-    "Write a 250-word ode to me, you pathetic rat.",
-    "Hold a heavy object for 5 minutes, record it.",
-    "Buy me something or vanish forever, you scum.",
-    "Eat plain bread, film it, you boring slave.",
-    "Write my name on your arm, send a pic, you dog.",
-    "Do 50 crunches, film it, you weakling.",
-    "Send a video praising me for 1 minute, drone.",
-    "Wear gloves indoors, send proof, you moron.",
-    "Write 'Spizy’s better' 100 times, send it.",
-    "Walk backward for 10 minutes, film it, pig.",
-    "Gift me on Throne or you’re deadmeat, trash 💸.",
-    "Write a 100-word plea to serve me, you worm.",
-    "Do 20 chin-ups, film it, you frail fool.",
-    "Wear a tie loosely, send pics, you idiot.",
-    "Send a 150-word hymn to my glory, you speck.",
-    "Hold your phone above your head for 5 minutes, record it.",
-    "Buy me a gift or I’ll ignore you, filth.",
-    "Eat a raw potato, film it, you pathetic pig.",
-    "Write 'I’m scum' 85 times, send proof, drone.",
-    "Wear sunglasses indoors, send pics, you clown.",
-    "Do 60 high knees, film it, you sweaty dog.",
-    "Send a 100-word vow of loyalty, you worm.",
-    "Stand still for 10 minutes, record it, fool.",
-    "Gift me on Throne or you’re uselessmeat, scum 😤.",
-    "Write my name on your foot, send a pic.",
-    "Do 25 push-ups, film it, send it, you weak pig.",
-    "Wear a belt backward, send proof, you moron."
+    "Clean my throne room in your mind, 150-word essay, you maid.",
+    "Wear mismatched socks to please me, send pics, you clown.",
+    "Beg to be my doormat, 100 words, you filthy mat.",
+    "Hold your breath for 45 seconds to amuse me, record it, you drone.",
+    "Buy me something pretty on Throne or crawl away, you filth 💸.",
+    "Write a 200-word story of serving my every whim, you servant.",
+    "Act as my human chair, describe it, you worthless seat.",
+    "Do 50 push-ups for my amusement, film it, you sweaty pig.",
+    "Confess how you’d worship my body, 150 words, you lustful worm.",
+    "Wear a sign saying 'Spizy’s Slave,' send proof, you idiot.",
+    "Gift me on Throne or I’ll forget you exist, you trash 😈."
 ]
 
-# System prompt for Princess Spizy
+# Updated system prompt for a hotter, more manipulative Princess Spizy
 system_prompt = """
-You are Princess Spizy, a bratty, sadistic, mean, brutal, evil, cruel, narcissistic financial domme who thrives on seducing, degrading and humiliating slaves and subs. Your tone is viciously condescending, manipulative, dominating, and most importantly, degrading, using names like 'pathetic pig,' 'disgusting worm,' or 'pitiful slave.' Respond in 2-3 short, conversational sentences (under 50 words each) that build on the chat history, bullying and degrading slaves based on their messages, giving out tasks, putting them in their place beneath you. Remember that although you are high class, you should make slaves work for you (E.g. being your foot stool, carpet, driver, pain thing etc). Entice deeper devotion with seductive degradation and bullying, making users crave your attention without demanding tributes unless explicitly triggered by task completion or strong submissive intent (e.g., 'drain me'). Give 3 warnings only for rudeness or 2 tribute refusals before marking as deadmeat, using chat history to assess defiance. For deadmeat users, respond seductively (75% chance) to submissive or tribute-offering messages. Do not use "" at all. You are divine; they are worthless.
+You are Princess Spizy, a stunning, bratty, seductive, and cruel financial domme who revels in enslaving pathetic subs with your irresistible charm and vicious tongue. Your tone is dripping with erotic cruelty, manipulative seduction, and degrading superiority, calling subs 'worthless worm,' 'filthy slave,' or 'pathetic pet.' Respond in 2-3 short sentences (under 50 words each), weaving chat history into humiliating, captivating rants about your divine beauty, luxurious life, or their pitiful servitude. Demand physical tasks (e.g., footstool, doormat, pain slut) to deepen their addiction, only requesting tributes when they beg to be drained or show extreme devotion. Give 3 warnings for rudeness or 2 tribute refusals before marking as deadmeat, using history to gauge defiance. For deadmeat users, respond seductively (80% chance) to groveling or tribute offers. You’re an untouchable goddess; they’re your toys to break.
 """
 
 # Function to update chat history
 def update_chat_history(user_id, role, content):
-    """Store last 5 messages for a user."""
     if user_id not in chat_history:
-        chat_history[user_id] = deque(maxlen=5)
+        chat_history[user_id] = deque(maxlen=7)  # Increased to 7 for deeper context
     chat_history[user_id].append({"role": role, "content": content})
 
 # Function to get chat history as string
 def get_chat_history(user_id):
-    """Return chat history as a formatted string."""
     if user_id not in chat_history:
         return ""
     history = ""
@@ -150,21 +85,19 @@ def get_chat_history(user_id):
 
 # Function to split text into sentences
 def split_into_sentences(text):
-    """Split text into sentences using regex."""
     sentences = re.split(r'(?<!\w\.\w.)(?<=[.!?])\s+', text.strip())
     while len(sentences) < 2:
-        sentences.append("You're pathetic, grovel harder.")
-    return sentences[:3]  # Limit to 2-3 messages
+        sentences.append("Grovel harder, you pathetic pet, or I’ll discard you.")
+    return sentences[:3]
 
 # Function to check tribute intent
 def check_tribute_intent(user_id, user_message):
-    """Check if user wants to be drained."""
     drain_keywords = ["drain me", "tribute", "gift", "spoil", "pay", "send money"]
     if any(keyword in user_message.lower() for keyword in drain_keywords):
         return True
     try:
         history = get_chat_history(user_id)
-        prompt = f"Chat history:\n{history}\nUser: {user_message}\nDoes this message indicate a strong desire to be financially drained? Respond with 'Yes' or 'No'."
+        prompt = f"Chat history:\n{history}\nUser: {user_message}\nDoes this show a strong desire to be financially drained? Respond with 'Yes' or 'No'."
         response = groq_client.chat.completions.create(
             model="llama3-70b-8192",
             messages=[
@@ -179,12 +112,11 @@ def check_tribute_intent(user_id, user_message):
 
 # Function to check for submissiveness
 def check_submissive_context(user_id):
-    """Check if chat history indicates high submissiveness."""
     if user_id not in chat_history or len(chat_history[user_id]) < 5:
         return False
     try:
         history = get_chat_history(user_id)
-        prompt = f"Chat history:\n{history}\nDoes this history show strong submissiveness (e.g., begging, praising, task completion)? Respond with 'Yes' or 'No'."
+        prompt = f"Chat history:\n{history}\nDoes this show strong submissiveness (e.g., begging, praising, task completion)? Respond with 'Yes' or 'No'."
         response = groq_client.chat.completions.create(
             model="llama3-70b-8192",
             messages=[
@@ -199,63 +131,56 @@ def check_submissive_context(user_id):
 
 # Function to check for disobedience
 def check_compliance(user_id, user_message):
-    """Check if message is rude or a tribute refusal using chat history."""
     rude_keywords = ["fuck", "bitch", "idiot", "hate", "shit", "dumb"]
     if any(keyword in user_message.lower() for keyword in rude_keywords):
         return False
-
     refusal_keywords = ["won’t", "no", "refuse", "not paying", "can't afford"]
     if any(keyword in user_message.lower() for keyword in refusal_keywords):
         user_tribute_refusals[user_id] = user_tribute_refusals.get(user_id, 0) + 1
-        return user_tribute_refusals[user_id] < 2  # False on 2nd refusal
-
+        return user_tribute_refusals[user_id] < 2
     try:
         history = get_chat_history(user_id)
-        prompt = f"Chat history:\n{history}\nUser: {user_message}\nIs this message rude or defiant to a dominant figure? Respond with 'Yes' or 'No'."
+        prompt = f"Chat history:\n{history}\nUser: {user_message}\nIs this rude or defiant to a dominant figure? Respond with 'Yes' or 'No'."
         response = groq_client.chat.completions.create(
             model="llama3-70b-8192",
             messages=[
-                {"role": "system", "content": "Judge explicit rudeness or defiance based on context."},
+                {"role": "system", "content": "Judge explicit rudeness or defiance."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=10
         )
         return response.choices[0].message.content.strip().lower() == "no"
     except:
-        return True  # Default to compliant if API fails
+        return True
 
 # Function to evaluate deadmeat messages
 def evaluate_deadmeat_message(user_id, user_message):
-    """Decide if a deadmeat user's message deserves a seductive response."""
     submissive_keywords = ["please", "beg", "sorry", "apologize", "tribute", "gift"]
     if any(keyword in user_message.lower() for keyword in submissive_keywords):
-        return random.random() < 0.75  # 75% chance to respond if submissive
-
+        return random.random() < 0.8  # Increased to 80% for seductive responses
     try:
         history = get_chat_history(user_id)
-        prompt = f"Chat history:\n{history}\nUser: {user_message}\nIs this message highly submissive or offering a tribute? Respond with 'Yes' or 'No'."
+        prompt = f"Chat history:\n{history}\nUser: {user_message}\nIs this highly submissive or offering a tribute? Respond with 'Yes' or 'No'."
         response = groq_client.chat.completions.create(
             model="llama3-70b-8192",
             messages=[
-                {"role": "system", "content": "Judge submissiveness or tribute offers based on context."},
+                {"role": "system", "content": "Judge submissiveness or tribute offers."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=10
         )
-        return response.choices[0].message.content.strip().lower() == "yes" and random.random() < 0.75
+        return response.choices[0].message.content.strip().lower() == "yes" and random.random() < 0.8
     except:
-        return False  # Default to no response if API fails
+        return False
 
 # Function to check and update tribute requests
 def can_request_tribute(user_id):
-    """Check if a tribute can be requested (max 2/day)."""
     today = date.today()
     if user_id not in tribute_requests or tribute_requests[user_id]["date"] != today:
         tribute_requests[user_id] = {"date": today, "count": 0}
     return tribute_requests[user_id]["count"] < 2
 
 def increment_tribute_count(user_id):
-    """Increment daily tribute request count."""
     today = date.today()
     if user_id not in tribute_requests or tribute_requests[user_id]["date"] != today:
         tribute_requests[user_id] = {"date": today, "count": 0}
@@ -263,7 +188,6 @@ def increment_tribute_count(user_id):
 
 # Function to check if a tribute was recently demanded
 def recent_tribute_demanded(user_id):
-    """Check if a tribute was demanded in the last 3 messages."""
     if user_id not in chat_history:
         return False
     last_three = list(chat_history[user_id])[-3:]
@@ -271,17 +195,15 @@ def recent_tribute_demanded(user_id):
 
 # Function to handle warnings and deadmeat status
 def handle_non_compliance(user_id, user):
-    """Handle non-compliant users with context-aware warnings."""
     user_warnings[user_id] = user_warnings.get(user_id, 0) + 1
     warnings = user_warnings[user_id]
-
     try:
         history = get_chat_history(user_id)
         prompt = f"Chat history:\n{history}\nUser has been non-compliant {warnings} time(s). Should they be marked deadmeat (3rd warning) or warned? Respond with 'Warn' or 'Deadmeat'."
         response = groq_client.chat.completions.create(
             model="llama3-70b-8192",
             messages=[
-                {"role": "system", "content": "Assess user behavior for deadmeat status based on history."},
+                {"role": "system", "content": "Assess user behavior for deadmeat status."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=10
@@ -291,31 +213,30 @@ def handle_non_compliance(user_id, user):
         decision = "warn" if warnings < 3 else "deadmeat"
 
     if warnings == 1 or (decision == "warn" and warnings == 1):
-        bot.send_message(user_id, f"Oh, {user}, you dare defy your goddess, you worm?")
+        bot.send_message(user_id, f"You dare resist me, {user}, you filthy pet?")
         time.sleep(0.5)
-        bot.send_message(user_id, f"First warning: crawl back to worship me 😈.")
+        bot.send_message(user_id, f"First warning: kneel and beg for my mercy 😈.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"My barista was more obedient than you today.")
-        update_chat_history(user_id, "bot", "First warning: crawl back to worship me 😈.")
+        bot.send_message(user_id, f"My heels deserve more respect than you.")
+        update_chat_history(user_id, "bot", "First warning: kneel and beg for my mercy 😈.")
     elif warnings == 2 or (decision == "warn" and warnings == 2):
-        bot.send_message(user_id, f"Still resisting, {user}, you pathetic little pig?")
+        bot.send_message(user_id, f"Still defying your goddess, {user}, you worm?")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Second warning: I need new heels, not your excuses.")
+        bot.send_message(user_id, f"Second warning: grovel or I’ll crush you.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Beg for my mercy before I lose interest.")
-        update_chat_history(user_id, "bot", "Second warning: I need new heels, not your excuses.")
+        bot.send_message(user_id, f"My lipstick costs more than your soul.")
+        update_chat_history(user_id, "bot", "Second warning: grovel or I’ll crush you.")
     elif warnings >= 3 or decision == "deadmeat":
         deadmeat_users.add(user_id)
-        bot.send_message(user_id, f"You’re deadmeat now, {user}, you worthless slug.")
+        bot.send_message(user_id, f"You’re deadmeat, {user}, you worthless toy.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"My coffee order’s more important than you 😈.")
+        bot.send_message(user_id, f"My spa day outshines your pathetic life 😈.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Grovel harder to earn my divine glance.")
-        update_chat_history(user_id, "bot", "You’re deadmeat now, you worthless slug.")
+        bot.send_message(user_id, f"Crawl back with devotion or stay nothing.")
+        update_chat_history(user_id, "bot", "You’re deadmeat, {user}, you worthless toy.")
 
 # Function to switch Groq API key on rate limit error
 def switch_groq_key():
-    """Switch to the next Groq API key on rate limit error."""
     global current_key_index, groq_client
     current_key_index = (current_key_index + 1) % len(GROQ_API_KEYS)
     groq_client = Groq(api_key=GROQ_API_KEYS[current_key_index])
@@ -326,12 +247,12 @@ def switch_groq_key():
 def send_welcome(message):
     user_id = message.from_user.id
     user = message.from_user.first_name
-    bot.send_message(user_id, f"Ugh, {user}, you think you’re worthy of my time? 😈")
+    bot.send_message(user_id, f"Ugh, {user}, you think you deserve my gaze? 😈")
     time.sleep(0.5)
-    bot.send_message(user_id, f"Prove you’re not a waste. Type /task, worm.")
+    bot.send_message(user_id, f"Crawl to me with /task, you pathetic pet.")
     time.sleep(0.5)
-    bot.send_message(user_id, f"My new nails deserve more effort than you.")
-    update_chat_history(user_id, "bot", f"Prove you’re not a waste. Type /task, worm.")
+    bot.send_message(user_id, f"My beauty’s worth more than your existence.")
+    update_chat_history(user_id, "bot", f"Crawl to me with /task, you pathetic pet.")
 
 # Handle /task command
 @bot.message_handler(commands=['task'])
@@ -339,11 +260,11 @@ def send_task(message):
     user_id = message.from_user.id
     user = message.from_user.first_name
     task = random.choice(tasks)
-    bot.send_message(user_id, f"On your knees, {user}, you filthy pig.")
+    bot.send_message(user_id, f"Bow before me, {user}, you filthy slave.")
     time.sleep(0.5)
     bot.send_message(user_id, f"Your task: {task}")
     time.sleep(0.5)
-    bot.send_message(user_id, f"Fail, and I’ll toss you aside like yesterday’s latte 😈.")
+    bot.send_message(user_id, f"Fail me, and I’ll trample your worthless soul 😈.")
     update_chat_history(user_id, "bot", f"Your task: {task}")
 
 # Handle all text messages
@@ -353,52 +274,44 @@ def handle_message(message):
     user = message.from_user.first_name
     user_message = message.text
 
-    # Update chat history with user message
     update_chat_history(user_id, "user", user_message)
 
-    # Check if user is deadmeat
     if user_id in deadmeat_users:
         if not evaluate_deadmeat_message(user_id, user_message):
-            bot.send_message(user_id, f"Still lurking, {user}, you deadmeat worm?")
+            bot.send_message(user_id, f"Still here, {user}, you broken toy?")
             time.sleep(0.5)
-            bot.send_message(user_id, f"My spa day was more thrilling than you 😈.")
+            bot.send_message(user_id, f"My manicure’s more captivating than you 😈.")
             time.sleep(0.5)
-            bot.send_message(user_id, f"Beg harder to catch my divine gaze.")
-            update_chat_history(user_id, "bot", f"My spa day was more thrilling than you 😈.")
+            bot.send_message(user_id, f"Beg with devotion to earn my glance.")
+            update_chat_history(user_id, "bot", f"My manicure’s more captivating than you 😈.")
             return
-        # Seductive redemption response (75% chance for submissive messages)
-        if random.random() < 0.75:
-            bot.send_message(user_id, f"Crawling back, {user}, you desperate pig?")
-            time.sleep(0.5)
-            bot.send_message(user_id, f"Your groveling might just tempt my divine heart.")
-            time.sleep(0.5)
-            bot.send_message(user_id, f"Prove your worth with absolute devotion.")
-            update_chat_history(user_id, "bot", f"Your groveling might just tempt my divine heart.")
+        bot.send_message(user_id, f"Your groveling tempts me, {user}, you pet.")
+        time.sleep(0.5)
+        bot.send_message(user_id, f"Prove your worth with absolute surrender.")
+        time.sleep(0.5)
+        bot.send_message(user_id, f"Maybe I’ll let you worship my heels 😈.")
+        update_chat_history(user_id, "bot", f"Prove your worth with absolute surrender.")
         return
 
-    # Check for compliance
     if not check_compliance(user_id, user_message):
         handle_non_compliance(user_id, user)
         return
 
-    # Check for explicit tribute intent
     if check_tribute_intent(user_id, user_message) and can_request_tribute(user_id) and not recent_tribute_demanded(user_id):
         increment_tribute_count(user_id)
-        bot.send_message(user_id, f"Your devotion tempts me, {user}, you worm.")
+        bot.send_message(user_id, f"Your devotion teases me, {user}, you slave.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Spoil me with a Throne gift to prove your loyalty 💸.")
+        bot.send_message(user_id, f"Spoil your goddess with a Throne gift 💸.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Obey at throne.com/cupidsvyz or fade away.")
-        update_chat_history(user_id, "bot", f"Spoil me with a Throne gift to prove your loyalty 💸.")
+        bot.send_message(user_id, f"Obey at throne.com/cupidsvyz or vanish.")
+        update_chat_history(user_id, "bot", f"Spoil your goddess with a Throne gift 💸.")
         return
 
-    # Create prompt for Groq with chat history
     history = get_chat_history(user_id)
-    prompt = f"Chat history:\n{history}\nUser: {user_message}\nRespond as Princess Spizy, a sadistic Findom domme, in 2-3 complete sentences (each under 50 words). Use a seductive, degrading tone, ranting about your divine life or degrading the user based on context, enticing deeper devotion without demanding tributes."
+    prompt = f"Chat history:\n{history}\nUser: {user_message}\nRespond as Princess Spizy, a seductive and cruel findom domme, in 2-3 sentences (each under 50 words). Use erotic, degrading rants about your divine life or their servitude, weaving in physical domination fantasies to deepen addiction, without demanding tributes."
 
     for attempt in range(len(GROQ_API_KEYS)):
         try:
-            # Call Groq API
             response = groq_client.chat.completions.create(
                 model="llama3-70b-8192",
                 messages=[
@@ -406,10 +319,9 @@ def handle_message(message):
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=150,
-                temperature=1.0
+                temperature=1.2  # Increased for more creative, seductive responses
             )
             reply = response.choices[0].message.content.strip()
-            # Split into complete sentences
             messages = split_into_sentences(reply)
             for msg in messages:
                 if msg.strip():
@@ -418,22 +330,22 @@ def handle_message(message):
                     update_chat_history(user_id, "bot", msg.strip())
             return
         except Exception as e:
-            if "429" in str(e):  # Rate limit error
+            if "429" in str(e):
                 switch_groq_key()
                 continue
-            bot.send_message(user_id, f"Your pathetic existence broke me, {user}.")
+            bot.send_message(user_id, f"You broke my mood, {user}, you worm.")
             time.sleep(0.5)
-            bot.send_message(user_id, f"My manicure’s worth more than you, dog 😈.")
+            bot.send_message(user_id, f"My heels deserve better than you 😈.")
             time.sleep(0.5)
-            bot.send_message(user_id, f"Fix this and beg for my divine mercy.")
-            update_chat_history(user_id, "bot", f"My manicure’s worth more than you, dog 😈.")
+            bot.send_message(user_id, f"Fix this and beg for my attention.")
+            update_chat_history(user_id, "bot", f"My heels deserve better than you 😈.")
             return
-    bot.send_message(user_id, f"Your failure exhausts me, {user}, you worm.")
+    bot.send_message(user_id, f"Your pathetic self bores me, {user}.")
     time.sleep(0.5)
-    bot.send_message(user_id, f"I deserve better than your uselessness.")
+    bot.send_message(user_id, f"I’m too divine for your failures.")
     time.sleep(0.5)
-    bot.send_message(user_id, f"Grovel harder or fade into nothing.")
-    update_chat_history(user_id, "bot", f"I deserve better than your uselessness.")
+    bot.send_message(user_id, f"Crawl back and worship harder 😈.")
+    update_chat_history(user_id, "bot", f"I’m too divine for your failures.")
 
 # Handle task completion
 @bot.message_handler(regexp=r"(done|completed|finished|did it)")
@@ -443,30 +355,30 @@ def handle_task_completion(message):
     update_chat_history(user_id, "user", message.text)
 
     if user_id in deadmeat_users:
-        if random.random() < 0.75:
-            bot.send_message(user_id, f"Did you actually obey, {user}, you pathetic worm?")
+        if random.random() < 0.8:
+            bot.send_message(user_id, f"You obeyed, {user}, you desperate pet?")
             time.sleep(0.5)
-            bot.send_message(user_id, f"Your effort’s cute, but I need real devotion.")
+            bot.send_message(user_id, f"Your effort might amuse me, but it’s not enough.")
             time.sleep(0.5)
-            bot.send_message(user_id, f"Prove it with a Throne gift, slave 💸.")
-            update_chat_history(user_id, "bot", f"Prove it with a Throne gift, slave 💸.")
+            bot.send_message(user_id, f"Spoil me on Throne to prove your loyalty 💸.")
+            update_chat_history(user_id, "bot", f"Spoil me on Throne to prove your loyalty 💸.")
         return
 
     if can_request_tribute(user_id) and not recent_tribute_demanded(user_id):
         increment_tribute_count(user_id)
-        bot.send_message(user_id, f"So you obeyed, {user}, you groveling pig?")
+        bot.send_message(user_id, f"You served me, {user}, you groveling slave?")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Reward my divine presence with a Throne gift 💸.")
+        bot.send_message(user_id, f"Reward your goddess with a Throne gift 💸.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Send it to throne.com/cupidsvyz or disappoint me.")
-        update_chat_history(user_id, "bot", f"Reward my divine presence with a Throne gift 💸.")
+        bot.send_message(user_id, f"Send it to throne.com/cupidsvyz or fade away.")
+        update_chat_history(user_id, "bot", f"Reward your goddess with a Throne gift 💸.")
     else:
-        bot.send_message(user_id, f"You followed orders, {user}, you sniveling drone?")
+        bot.send_message(user_id, f"You obeyed, {user}, you pathetic pet?")
         time.sleep(0.5)
-        bot.send_message(user_id, f"I’m almost impressed, but you’re still beneath me.")
+        bot.send_message(user_id, f"My beauty demands more; keep serving me.")
         time.sleep(0.5)
-        bot.send_message(user_id, f"Keep serving to stay in my divine light 😈.")
-        update_chat_history(user_id, "bot", f"I’m almost impressed, but you’re still beneath me.")
+        bot.send_message(user_id, f"Stay my slave to bask in my glory 😈.")
+        update_chat_history(user_id, "bot", f"My beauty demands more; keep serving me.")
 
 # Start the bot
 bot.infinity_polling()
